@@ -13,6 +13,7 @@ class SocialScraper:
     
     async def extract_text(self, url: str) -> Optional[str]:
         """Extract text content from a social media post URL."""
+        browser = None
         try:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
@@ -20,7 +21,7 @@ class SocialScraper:
                 
                 # Add LinkedIn cookies if available
                 if "linkedin.com" in url and self.linkedin_cookies:
-                    await self._add_cookies(context, self.linkedin_cookies, "linkedin.com")
+                    await self._add_cookies(context, self.linkedin_cookies, ".linkedin.com")
                 
                 page = await context.new_page()
                 
@@ -44,14 +45,18 @@ class SocialScraper:
                     # For non-social media URLs, try to extract general content
                     text = self._extract_general_text(soup)
                 
-                await browser.close()
                 return text
                 
         except Exception as e:
             print(f"Error extracting text from {url}: {type(e).__name__}: {e}")
-            import traceback
-            traceback.print_exc()
+            # Don't print full traceback in production
+            if os.getenv("DEBUG", "false").lower() == "true":
+                import traceback
+                traceback.print_exc()
             return None
+        finally:
+            if browser:
+                await browser.close()
     
     def _extract_linkedin_text(self, soup: BeautifulSoup) -> Optional[str]:
         """Extract text from LinkedIn post."""
@@ -154,6 +159,8 @@ class SocialScraper:
                         'path': '/'
                     })
             
-            await context.add_cookies(cookies)
+            if cookies:
+                await context.add_cookies(cookies)
+                print(f"Added {len(cookies)} cookies for domain {domain}")
         except Exception as e:
             print(f"Error adding cookies: {e}")

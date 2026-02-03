@@ -1,5 +1,7 @@
 # PulseTag - AI-Driven Hashtag Generator
 
+<img width="1022" height="777" alt="Screenshot 2026-02-03 114308" src="https://github.com/user-attachments/assets/88795d2d-fce4-484b-8cf7-382d81b9f3c1" />
+
 A powerful web application that analyzes your social media posts in real-time, suggesting the top trending hashtags to maximize post reach and engagement. Perfect for influencers and marketers who want to stay ahead of the trend curve.
 
 ## Why OpenRouter?

@@ -1,13 +1,19 @@
 import openai
 import json
 import os
+import asyncio
+import re
 from typing import Dict, List
 
 class AIEngine:
     def __init__(self):
         # Configure OpenRouter client
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY environment variable is required")
+        
         self.client = openai.OpenAI(
-            api_key=os.getenv("OPENROUTER_API_KEY", "sk-or-v1-your-key-here"),
+            api_key=api_key,
             base_url="https://openrouter.ai/api/v1"
         )
         self.model = os.getenv("OPENROUTER_MODEL", "microsoft/phi-3-medium-128k-instruct:free")
@@ -28,14 +34,20 @@ class AIEngine:
     async def analyze_post(self, text_content: str) -> Dict[str, List[str]]:
         """Analyze post content and generate hashtags."""
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": text_content}
-                ],
-                temperature=0.7,
-                max_tokens=500
+            # Sanitize input to prevent prompt injection
+            sanitized_content = self._sanitize_input(text_content)
+            
+            # Run the blocking OpenAI call in a thread
+            response = await asyncio.to_thread(
+                lambda: self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": sanitized_content}
+                    ],
+                    temperature=0.7,
+                    max_tokens=500
+                )
             )
             
             content = response.choices[0].message.content.strip()
@@ -57,7 +69,6 @@ class AIEngine:
                 
             except json.JSONDecodeError:
                 # Fallback: try to extract JSON from response
-                import re
                 json_match = re.search(r'\{.*\}', content, re.DOTALL)
                 if json_match:
                     hashtags = json.loads(json_match.group())
@@ -76,3 +87,12 @@ class AIEngine:
                 "rising": ["DigitalTrends"],
                 "niche": ["ContentStrategy"]
             }
+    
+    def _sanitize_input(self, text: str) -> str:
+        """Sanitize input text to prevent prompt injection."""
+        # Remove potential prompt injection patterns
+        text = re.sub(r'(?i)system\s*:', '', text)
+        text = re.sub(r'(?i)assistant\s*:', '', text)
+        text = re.sub(r'(?i)user\s*:', '', text)
+        # Limit length to prevent token overflow
+        return text[:5000]

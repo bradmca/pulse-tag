@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from typing import Dict, List, Optional
 import os
+import asyncio
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 from scraper import SocialScraper
@@ -14,7 +16,7 @@ app = FastAPI(title="PulseTag API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +35,16 @@ ai_engine = AIEngine()
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 async def analyze_post(request: AnalyzeRequest):
     try:
+        # Validate URL to prevent SSRF
+        parsed_url = urlparse(str(request.url))
+        allowed_domains = ["linkedin.com", "twitter.com", "x.com"]
+        
+        if parsed_url.netloc not in allowed_domains:
+            raise HTTPException(
+                status_code=400,
+                detail=f"URL domain not allowed. Only {', '.join(allowed_domains)} are supported."
+            )
+        
         # Extract text from the social media post
         text_content = await scraper.extract_text(request.url)
         

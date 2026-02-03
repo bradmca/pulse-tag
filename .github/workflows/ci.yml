@@ -27,7 +27,8 @@ jobs:
       run: |
         cd backend
         python -m pytest --cov=. --cov-report=xml
-      continue-on-error: true  # Tests are not implemented yet
+      # Tests are not implemented yet - uncomment when tests are added
+      # continue-on-error: true
 
   test-frontend:
     runs-on: ubuntu-latest
@@ -51,7 +52,8 @@ jobs:
       run: |
         cd frontend
         npm test
-      continue-on-error: true  # Tests are not implemented yet
+      # Tests are not implemented yet - uncomment when tests are added
+      # continue-on-error: true
     
     - name: Build
       run: |
